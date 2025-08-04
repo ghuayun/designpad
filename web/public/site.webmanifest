@@ -1,0 +1,22 @@
+{
+    "name": "DesignDraw - Free Online Drawing Tool",
+    "short_name": "DesignDraw",
+    "description": "Create professional diagrams, flowcharts, and drawings online for free",
+    "icons": [
+        {
+            "src": "/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "theme_color": "#007acc",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": "/",
+    "scope": "/"
+}

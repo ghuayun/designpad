@@ -1,0 +1,17 @@
+# Azure Developer CLI configuration for DesignDraw
+name: designdraw-web
+metadata:
+  template: designdraw-web@1.0.0
+  
+services:
+  web:
+    project: ./
+    language: js
+    host: containerapp
+    
+infra:
+  provider: bicep
+  path: infra
+  
+pipeline:
+  provider: github

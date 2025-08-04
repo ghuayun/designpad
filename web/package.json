@@ -1,0 +1,43 @@
+{
+  "name": "designdraw-web",
+  "version": "1.0.0",
+  "description": "DesignDraw Web Application - A lightweight work/data flow design app",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "nodemon server/app.js",
+    "build": "echo 'No build step needed for static files'",
+    "docker:build": "docker build -t designdraw-web .",
+    "docker:run": "docker run -p 3000:3000 designdraw-web",
+    "docker:dev": "docker run -p 3000:3000 -v $(pwd):/app designdraw-web npm run dev"
+  },
+  "keywords": [
+    "drawing",
+    "design",
+    "flowchart",
+    "web-app",
+    "canvas",
+    "diagram"
+  ],
+  "author": "DesignDraw",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/designdraw/designdraw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/designdraw/designdraw/issues"
+  },
+  "homepage": "https://designdraw.com"
+}

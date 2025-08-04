@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  designdraw-web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.designdraw.description=DesignDraw Web Application"
+      - "com.designdraw.version=1.0.0"
+
+  # Development service with volume mounting
+  designdraw-dev:
+    build: .
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+    profiles:
+      - dev
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - designdraw-web
+    profiles:
+      - production
+    restart: unless-stopped

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DesignDraw</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Ads Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3855350461733496"
+        crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="app-header">
+            <h1>DesignDraw</h1>
+            <div class="header-controls">
+                <div id="filename">Untitled.draw</div>
+                <div id="autosave-status">Ready</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <!-- Tool Group: Drawing Tools -->
+            <div class="tool-group">
+                <button class="tool-btn active" data-tool="select" title="Select (V)">Select</button>
+                <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)">Rectangle</button>
+                <button class="tool-btn" data-tool="circle" title="Circle (C)">Circle</button>
+                <button class="tool-btn" data-tool="line" title="Line (L)">Line</button>
+                <button class="tool-btn" data-tool="arrow" title="Arrow (A)">Arrow</button>
+                <button class="tool-btn" data-tool="pen" title="Pen (P)">Pen</button>
+                <button class="tool-btn" data-tool="text" title="Text (T)">Text</button>
+                <button class="tool-btn" data-tool="eraser" title="Eraser (E)">Eraser</button>
+            </div>
+
+            <!-- Tool Group: Colors -->
+            <div class="tool-group">
+                <label for="stroke-color">Stroke:</label>
+                <input type="color" id="stroke-color" value="#000000">
+                <label for="fill-color">Fill:</label>
+                <input type="color" id="fill-color" value="#ffffff">
+            </div>
+
+            <!-- Tool Group: Stroke Options -->
+            <div class="tool-group">
+                <label for="stroke-width">Width:</label>
+                <select id="stroke-width">
+                    <option value="1">1px</option>
+                    <option value="2" selected>2px</option>
+                    <option value="3">3px</option>
+                    <option value="5">5px</option>
+                    <option value="8">8px</option>
+                    <option value="12">12px</option>
+                </select>
+                
+                <label for="stroke-style">Style:</label>
+                <select id="stroke-style">
+                    <option value="solid" selected>Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                </select>
+            </div>
+
+            <!-- Tool Group: Actions -->
+            <div class="tool-group">
+                <button class="action-btn" id="undo-btn" title="Undo (Ctrl+Z)">Undo</button>
+                <button class="action-btn" id="redo-btn" title="Redo (Ctrl+Y)">Redo</button>
+                <button class="action-btn" id="clear-btn" title="Clear All">Clear</button>
+                <button class="action-btn" id="export-btn" title="Export">Export</button>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <!-- Text Input Modal -->
+    <div id="text-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Add Text</h3>
+            <textarea id="text-input" placeholder="Enter your text here..." rows="4"></textarea>
+            <div class="modal-buttons">
+                <button id="text-ok">OK</button>
+                <button id="text-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
