@@ -6,12 +6,41 @@ const fs = require('fs').promises;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Ensure we get real client IPs behind reverse proxies (Azure)
+app.set('trust proxy', true);
+
+// Helper: stable local date key YYYY-MM-DD
+function getLocalDateKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Helper: migrate any non-ISO daily keys to ISO (YYYY-MM-DD)
+function migrateDailyKeysToISO(daily) {
+  const result = {};
+  if (!daily) return result;
+  for (const [k, v] of Object.entries(daily)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+      result[k] = (result[k] || 0) + (v || 0);
+    } else {
+      const parsed = new Date(k);
+      if (!isNaN(parsed)) {
+        const key = getLocalDateKey(parsed);
+        result[key] = (result[key] || 0) + (v || 0);
+      }
+    }
+  }
+  return result;
+}
+
 // Simple visit tracking - stored in memory and file
 let visitStats = {
     totalVisits: 0,
     uniqueVisitors: new Set(),
     dailyVisits: {},
-    lastReset: new Date().toDateString()
+    lastReset: getLocalDateKey()
 };
 
 // Load existing stats on startup
@@ -34,14 +63,14 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Simple visit tracking function
 function trackVisit(req) {
-    const today = new Date().toDateString();
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const todayKey = getLocalDateKey();
+    const ip = (req.headers['x-forwarded-for']?.split(',')[0]?.trim()) || req.ip || req.connection.remoteAddress || 'unknown';
     
-    // Reset daily stats if new day
-    if (visitStats.lastReset !== today) {
-        visitStats.dailyVisits = {};
-        visitStats.lastReset = today;
-        visitStats.uniqueVisitors.clear(); // Reset daily unique visitors
+    // Initialize daily stats if new day (but don't reset all data)
+    if (visitStats.lastReset !== todayKey) {
+        visitStats.lastReset = todayKey;
+        visitStats.uniqueVisitors.clear(); // Only reset daily unique visitors
+        // Keep historical dailyVisits data - don't reset it
     }
     
     // Track total visits
@@ -50,11 +79,11 @@ function trackVisit(req) {
     // Track unique visitors (by IP per day)
     visitStats.uniqueVisitors.add(ip);
     
-    // Track daily visits
-    if (!visitStats.dailyVisits[today]) {
-        visitStats.dailyVisits[today] = 0;
+    // Track daily visits (preserve historical data)
+    if (!visitStats.dailyVisits[todayKey]) {
+        visitStats.dailyVisits[todayKey] = 0;
     }
-    visitStats.dailyVisits[today]++;
+    visitStats.dailyVisits[todayKey]++;
     
     // Save stats periodically
     saveStats();
@@ -68,8 +97,14 @@ async function loadStats() {
         const savedStats = JSON.parse(data);
         
         visitStats.totalVisits = savedStats.totalVisits || 0;
-        visitStats.dailyVisits = savedStats.dailyVisits || {};
-        visitStats.lastReset = savedStats.lastReset || new Date().toDateString();
+        visitStats.dailyVisits = migrateDailyKeysToISO(savedStats.dailyVisits || {});
+        // Normalize lastReset to ISO local date key
+        if (savedStats.lastReset) {
+          const parsed = new Date(savedStats.lastReset);
+          visitStats.lastReset = isNaN(parsed) ? getLocalDateKey() : getLocalDateKey(parsed);
+        } else {
+          visitStats.lastReset = getLocalDateKey();
+        }
         
         console.log('📊 Stats loaded:', visitStats.totalVisits, 'total visits');
     } catch (error) {
@@ -109,10 +144,10 @@ app.get('/health', (req, res) => {
 
 // Simple stats API endpoint
 app.get('/api/stats', (req, res) => {
-    const today = new Date().toDateString();
+    const todayKey = getLocalDateKey();
     const stats = {
         totalVisits: visitStats.totalVisits,
-        todayVisits: visitStats.dailyVisits[today] || 0,
+        todayVisits: visitStats.dailyVisits[todayKey] || 0,
         uniqueVisitorsToday: visitStats.uniqueVisitors.size,
         recentDays: getRecentDaysStats(),
         lastUpdated: new Date().toISOString()
@@ -130,8 +165,8 @@ function getRecentDaysStats() {
     for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const dateString = date.toDateString();
-        recent[dateString] = visitStats.dailyVisits[dateString] || 0;
+        const key = getLocalDateKey(date);
+        recent[key] = visitStats.dailyVisits[key] || 0;
     }
     
     return recent;
@@ -143,10 +178,6 @@ app.get('/stats', (req, res) => {
 });
 
 // SEO-friendly routes
-app.get('/about', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/about.html'));
-});
-
 app.get('/features', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/features.html'));
 });

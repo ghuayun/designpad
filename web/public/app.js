@@ -74,36 +74,58 @@ class DesignDrawApp {
         this.resizeStartX = 0;
         this.resizeStartY = 0;
         
+        // Double-click detection for text in shapes
+        this.lastClickTime = 0;
+        this.lastClickX = 0;
+        this.lastClickY = 0;
+        this.doubleClickThreshold = 300; // milliseconds
+        this.doubleClickDistance = 10; // pixels
+        
         this.init();
     }
     
     init() {
+        // Removed welcome screen setup - reverted to original layout
         this.setupCanvas();
         this.setupEventListeners();
         this.initializeTheme();
-        this.checkAdState(); // Check if user previously closed the ad
         this.render();
         this.startAutoSave();
     }
     
+    
     setupCanvas() {
-        // Set initial canvas size
+        // Get the container size to fit canvas properly
+        const container = this.canvas.parentElement;
+        const containerRect = container.getBoundingClientRect();
+        
+        // Set canvas to fill the available space
+        this.canvasWidth = containerRect.width || 1200;
+        this.canvasHeight = containerRect.height || 800;
+        
+        // Set canvas dimensions
         this.canvas.width = this.canvasWidth;
         this.canvas.height = this.canvasHeight;
         
-        // Set canvas style to match its actual size
-        this.canvas.style.width = this.canvasWidth + 'px';
-        this.canvas.style.height = this.canvasHeight + 'px';
+        // Set canvas style to fill container
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.canvas.style.display = 'block';
+        this.canvas.style.position = 'static';
+        this.canvas.style.margin = '0';
+        this.canvas.style.padding = '0';
         
         // Enable high DPI support
         const ratio = window.devicePixelRatio || 1;
         if (ratio > 1) {
             this.canvas.width = this.canvasWidth * ratio;
             this.canvas.height = this.canvasHeight * ratio;
-            this.canvas.style.width = this.canvasWidth + 'px';
-            this.canvas.style.height = this.canvasHeight + 'px';
+            this.canvas.style.width = '100%';
+            this.canvas.style.height = '100%';
             this.ctx.scale(ratio, ratio);
         }
+        
+        console.log(`Canvas set up: ${this.canvasWidth}x${this.canvasHeight}`);
     }
     
     setupEventListeners() {
@@ -143,12 +165,6 @@ class DesignDrawApp {
         
         // Theme toggle button
         document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
-        
-        // Ad close button
-        const adCloseBtn = document.getElementById('ad-close-btn');
-        if (adCloseBtn) {
-            adCloseBtn.addEventListener('click', () => this.closeAd());
-        }
         
         // Prevent context menu
         this.canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -515,6 +531,9 @@ class DesignDrawApp {
                     size: parseInt(document.getElementById('brush-size').value) || 2
                 });
                 this.markAsChanged();
+                
+                // Auto-switch to select tool after completing pen drawing
+                this.setTool('select');
             }
             this.currentPenPath = [];
             this.render();
@@ -539,7 +558,78 @@ class DesignDrawApp {
     }
     
     handleClick(e) {
-        // Remove automatic text modal - direct text editing is handled in handleTextMouseDown
+        if (this.isEditingText) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left - this.panOffsetX;
+        const clickY = e.clientY - rect.top - this.panOffsetY;
+        const currentTime = Date.now();
+        
+        // Check for double-click
+        const timeDiff = currentTime - this.lastClickTime;
+        const distance = Math.sqrt(
+            Math.pow(clickX - this.lastClickX, 2) + 
+            Math.pow(clickY - this.lastClickY, 2)
+        );
+        
+        if (timeDiff < this.doubleClickThreshold && distance < this.doubleClickDistance) {
+            // Double-click detected
+            this.handleDoubleClick(clickX, clickY);
+        }
+        
+        // Update last click info
+        this.lastClickTime = currentTime;
+        this.lastClickX = clickX;
+        this.lastClickY = clickY;
+    }
+    
+    handleDoubleClick(x, y) {
+        // Find object at click position
+        const clickedObject = this.getObjectAtPoint(x, y);
+        
+        if (clickedObject && ['rectangle', 'circle', 'diamond'].includes(clickedObject.type)) {
+            // Calculate center of the shape for text placement
+            const centerX = clickedObject.x + clickedObject.width / 2;
+            const centerY = clickedObject.y + clickedObject.height / 2;
+            
+            // Create text at the center of the shape
+            this.createTextInShape(centerX, centerY, clickedObject);
+        }
+    }
+    
+    createTextInShape(x, y, parentShape) {
+        // Switch to text tool temporarily
+        const originalTool = this.currentTool;
+        
+        // Create text object
+        const fontSize = document.getElementById('font-size').value;
+        const fontFamily = document.getElementById('font-family').value;
+        
+        const textObj = {
+            type: 'text',
+            text: '',
+            x: x,
+            y: y - parseInt(fontSize) / 2, // Center vertically
+            fontSize: fontSize,
+            fontFamily: fontFamily,
+            color: document.getElementById('stroke-color').value,
+            id: Date.now(),
+            isTemporary: true,
+            parentShape: parentShape.id // Reference to parent shape
+        };
+        
+        this.objects.push(textObj);
+        
+        // Start text editing
+        this.isEditingText = true;
+        this.editingTextObject = textObj;
+        this.textContent = '';
+        this.textCursor = 0;
+        
+        this.render();
+        this.drawTextCursor();
+        
+        console.log('Double-click text creation in shape');
     }
     
     handleEraserClick() {
@@ -876,6 +966,9 @@ class DesignDrawApp {
             this.saveState();
             this.editingTextObject.text = this.textContent;
             delete this.editingTextObject.isTemporary;
+            
+            // Auto-switch to select tool after completing text entry
+            this.setTool('select');
         }
         
         this.isEditingText = false;
@@ -944,11 +1037,9 @@ class DesignDrawApp {
         
         this.selectedObjects = this.objects.filter(obj => {
             const bounds = this.getObjectBounds(obj);
-            if (!bounds) return false;
-            
             // Check if object is within selection rectangle
-            return bounds.x < maxX && bounds.x + bounds.width > minX &&
-                   bounds.y < maxY && bounds.y + bounds.height > minY;
+            return bounds.left < maxX && bounds.right > minX &&
+                   bounds.top < maxY && bounds.bottom > minY;
         });
         
         this.selectedObject = this.selectedObjects.length > 0 ? this.selectedObjects[0] : null;
@@ -1029,6 +1120,9 @@ class DesignDrawApp {
         };
         
         this.addObject(shape);
+        
+        // Auto-switch to select tool after creating a shape
+        this.setTool('select');
     }
     
     createText(text, x, y) {
@@ -1064,6 +1158,9 @@ class DesignDrawApp {
         };
         
         this.addObject(arrow);
+        
+        // Auto-switch to select tool after creating an arrow
+        this.setTool('select');
     }
     
     addObject(obj) {
@@ -2216,47 +2313,30 @@ class DesignDrawApp {
                 }
             }
         } catch (error) {
-            console.error('Failed to load auto-save:', error);
+            console.error('Auto-save load failed:', error);
         }
     }
-    
-    // Theme-aware color helper
+
+    // Theme system
     getThemeColor(cssVariable) {
-        // Define theme colors directly since CSS variable reading can be unreliable
         const themeColors = {
             light: {
-                '--bg-primary': '#f5f5f5',
-                '--bg-secondary': '#ffffff',
-                '--bg-tertiary': '#f8f9fa',
+                '--bg-primary': '#ffffff',
+                '--bg-secondary': '#f5f5f5',
                 '--text-primary': '#333333',
                 '--text-secondary': '#666666',
-                '--text-tertiary': '#999999',
-                '--border-primary': '#e0e0e0',
-                '--border-secondary': '#ccc',
-                '--border-tertiary': '#d0d0d0',
                 '--accent-primary': '#007acc',
-                '--accent-secondary': '#005a9f',
-                '--shadow-light': 'rgba(0, 0, 0, 0.1)',
-                '--shadow-medium': 'rgba(0, 0, 0, 0.15)',
-                '--hover-bg': '#f0f0f0',
-                '--hover-border': '#d0d0d0'
+                '--accent-secondary': '#005a9e',
+                '--border-color': '#e0e0e0'
             },
             dark: {
-                '--bg-primary': '#1a1a1a',
+                '--bg-primary': '#1e1e1e',
                 '--bg-secondary': '#2d2d2d',
-                '--bg-tertiary': '#3a3a3a',
                 '--text-primary': '#ffffff',
                 '--text-secondary': '#cccccc',
-                '--text-tertiary': '#999999',
-                '--border-primary': '#404040',
-                '--border-secondary': '#555555',
-                '--border-tertiary': '#666666',
                 '--accent-primary': '#4da6ff',
-                '--accent-secondary': '#0080ff',
-                '--shadow-light': 'rgba(0, 0, 0, 0.3)',
-                '--shadow-medium': 'rgba(0, 0, 0, 0.5)',
-                '--hover-bg': '#404040',
-                '--hover-border': '#555555'
+                '--accent-secondary': '#3399ff',
+                '--border-color': '#404040'
             }
         };
         
@@ -2321,24 +2401,35 @@ class DesignDrawApp {
         }
     }
     
-    closeAd() {
-        const adContainer = document.getElementById('ad-container');
-        if (adContainer) {
-            adContainer.classList.add('hidden');
-            // Store the user's preference to hide ads for this session
-            sessionStorage.setItem('adClosed', 'true');
-            console.log('Ad closed by user');
-        }
+}
+
+// Rolling tips functionality
+class RollingTips {
+    constructor() {
+        this.tips = [
+            "DesignPad - Use Ctrl+wheel to zoom, middle mouse to pan",
+            "💡 Tip: Double-click inside any shape to add text instantly!",
+            "💡 Tip: After drawing a shape, you'll automatically switch to Select tool",
+            "💡 Tip: Use keyboard shortcuts - S (Select), P (Pen), R (Rectangle), C (Circle)",
+            "💡 Tip: Copy shapes with Ctrl+C, paste with Ctrl+V for quick duplication",
+            "💡 Tip: Use the Hand tool (H) to pan around your unlimited canvas",
+            "💡 Tip: Export your work as PNG or save as .dd file to continue later",
+            "💡 Tip: Hold Shift while drawing rectangles to create perfect squares",
+            "💡 Tip: Use Ctrl+Z to undo and Ctrl+Y to redo your actions",
+            "💡 Tip: Right-click and drag to resize selected shapes easily"
+        ];
+        this.currentTipIndex = 0;
+        this.footerElement = document.getElementById('footer-tip');
+        this.startRotation();
     }
     
-    checkAdState() {
-        // Check if user previously closed the ad in this session
-        if (sessionStorage.getItem('adClosed') === 'true') {
-            const adContainer = document.getElementById('ad-container');
-            if (adContainer) {
-                adContainer.classList.add('hidden');
-            }
-        }
+    startRotation() {
+        if (!this.footerElement) return;
+        
+        setInterval(() => {
+            this.currentTipIndex = (this.currentTipIndex + 1) % this.tips.length;
+            this.footerElement.textContent = this.tips[this.currentTipIndex];
+        }, 10000); // Change tip every 10 seconds
     }
 }
 
@@ -2348,6 +2439,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check for auto-saved data
     app.loadAutoSave();
+    
+    // Initialize rolling tips
+    new RollingTips();
     
     // Make app globally available for debugging
     window.designDrawApp = app;

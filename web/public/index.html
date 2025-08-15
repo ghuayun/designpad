@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     
     <!-- Enhanced SEO Meta Tags -->
     <title>DesignPad - Free Online Drawing & Diagramming Tool | Create Flowcharts, Diagrams & More</title>
@@ -29,10 +32,6 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://designpad.info">
     
-    <!-- Google Ads Script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3855350461733496"
-        crossorigin="anonymous"></script>
-    
     <!-- Favicon and App Icons -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -41,7 +40,7 @@
     <link rel="manifest" href="/site.webmanifest">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="styles.css?v=2.0">
+    <link rel="stylesheet" href="styles.css?v=4.0">
     
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
@@ -337,32 +336,14 @@
         <!-- Canvas Container -->
         <div class="canvas-container">
             <canvas id="canvas"></canvas>
-            
-            <!-- Google Ad - Top Right Corner of Canvas -->
-            <div class="ad-container-canvas" id="ad-container">
-                <button class="ad-close-btn" id="ad-close-btn" title="Close Ad">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-                <ins class="adsbygoogle"
-                     style="display:inline-block;width:320px;height:100px"
-                     data-ad-client="ca-pub-3855350461733496"
-                     data-ad-slot="auto"
-                     data-ad-format="rectangle"></ins>
-                <script>
-                     (adsbygoogle = window.adsbygoogle || []).push({});
-                </script>
-            </div>
         </div>
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>DesignPad - Use Ctrl+wheel to zoom, middle mouse to pan</p>
+            <p id="footer-tip">DesignPad - Use Ctrl+wheel to zoom, middle mouse to pan</p>
         </footer>
     </div>
 
-    <script src="app.js?v=2.0"></script>
+    <script src="app.js?v=4.0"></script>
 </body>
 </html>

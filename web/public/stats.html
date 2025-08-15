@@ -254,23 +254,35 @@
             const chartContainer = document.getElementById('daily-chart');
             chartContainer.innerHTML = '';
             
-            const maxVisits = Math.max(...Object.values(recentDays));
+            // Normalize and sort ISO date keys ascending
+            const entries = Object.entries(recentDays).map(([k, v]) => {
+                // If key is not ISO (YYYY-MM-DD), try to convert
+                let dateObj;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+                    const [y, m, d] = k.split('-').map(Number);
+                    dateObj = new Date(y, m - 1, d);
+                } else {
+                    dateObj = new Date(k);
+                }
+                return [dateObj, v || 0];
+            }).filter(([d]) => !isNaN(d));
             
-            // If no visits, show empty chart
-            if (maxVisits === 0) {
+            entries.sort((a, b) => a[0] - b[0]);
+            
+            const values = entries.map(([, v]) => v);
+            const maxVisits = values.length ? Math.max(...values) : 0;
+            
+            if (!entries.length || maxVisits === 0) {
                 chartContainer.innerHTML = '<div style="text-align: center; color: #666; margin: 80px 0;">No visits recorded in the last 7 days</div>';
                 return;
             }
             
-            Object.entries(recentDays).forEach(([date, visits]) => {
+            for (const [dateObj, visits] of entries) {
                 const bar = document.createElement('div');
                 bar.className = 'bar';
-                
-                // Calculate height (minimum 4px, maximum 180px)
                 const height = Math.max(4, (visits / maxVisits) * 180);
                 bar.style.height = height + 'px';
                 
-                // Add value label
                 if (visits > 0) {
                     const valueLabel = document.createElement('div');
                     valueLabel.className = 'bar-value';
@@ -278,21 +290,15 @@
                     bar.appendChild(valueLabel);
                 }
                 
-                // Add date label
                 const dateLabel = document.createElement('div');
                 dateLabel.className = 'bar-label';
-                const shortDate = new Date(date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
+                const shortDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 dateLabel.textContent = shortDate;
                 bar.appendChild(dateLabel);
                 
-                // Add tooltip on hover
                 bar.title = `${shortDate}: ${visits} visits`;
-                
                 chartContainer.appendChild(bar);
-            });
+            }
         }
         
         // Load stats on page load
